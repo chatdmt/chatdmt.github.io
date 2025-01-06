@@ -1,0 +1,304 @@
+
+@charset "utf-8";
+
+/*
+========================================================================
+:: LAYOUT FUNDAMENTALS :::::::::::::::::::::::::::::::::::::::::::::::::
+========================================================================
+*/
+
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+html, body {
+	font-size: 16px;
+	min-height: 100%;
+}
+
+body {
+	width: 90%;
+	max-width: 1600px;
+	margin: auto;
+	transition: width 1s ease;
+}
+
+.siteheader,
+.sitemain,
+.sitefooter {
+	padding: 0.5em 1em;
+}
+
+.title .tag {
+	display: inline-block;
+	vertical-align: middle;
+	font-size: 0.4em;
+	padding: 0 0.2em;
+}
+
+.sitemain {
+	min-height: 60px;
+}
+
+.sitefooter {
+	padding-top: 1em;
+	padding-bottom: 2em;
+}
+
+.sitefooter > div {
+	max-width: 600px;
+}
+
+.stdcontent > * + * {
+	margin-top: 0.6rem;
+}
+
+.stdcontent ul,
+.stdcontent ol {
+	margin-top: 0;
+	padding-left: 1.5em;
+}
+
+@media (max-width: 700px) {
+	body {
+		width: 100%;
+	}
+}
+
+/*
+========================================================================
+:: THEME AND COLORS ::::::::::::::::::::::::::::::::::::::::::::::::::::
+========================================================================
+*/
+
+html {
+	font-family: "VT323", sans-serif;
+	color: #bdcea2;
+	background:
+		linear-gradient(
+			-60deg,
+			#65abb7ee,
+			#2a3655
+		),
+		url(https://source.unsplash.com/ALu2B7Vy7ao),
+	#304134;
+	background-size: cover;
+}
+
+a {
+	color: white;
+}
+
+a.lowkey {
+	color: inherit;
+	text-decoration-color: #fff4;
+}
+
+.title > h1 {
+	color: white;
+	text-shadow: 0 0 10px #ffffff66;
+}
+
+.title .tag {
+	border: 1px solid yellow;
+	background: #a7a20047;
+	font-weight: normal;
+	border-radius: 2em;
+}
+
+.siteheader {
+  background: #ffffff11;
+}
+
+.sitemain, .sitefooter {
+	background: rgba(0,0,0, 0.5);
+	box-shadow: 3px 6px 12px rgba(0,0,0, 0.15);
+}
+
+.sitefooter {
+	opacity: 0.8;
+	background: rgba(0,0,0, 0.3);
+}
+
+/*
+========================================================================
+:: DOODADS :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+========================================================================
+*/
+
+.disclaimer {
+	padding: 0.2em 0.6em;
+	background: #f902;
+	text-shadow: 1px 2px 3px #0003;
+}
+
+.wipnote {
+	color: orange;
+	text-shadow: 1px 2px 3px #0008;
+}
+
+/*
+========================================================================
+:: Staticrypt :::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+========================================================================
+*/
+
+.staticrypt-hr {
+    margin-top: 20px;
+    margin-bottom: 20px;
+    border: 0;
+    border-top: 1px solid #eee;
+}
+
+.staticrypt-page {
+    width: 360px;
+    padding: 8% 0 0;
+    margin: auto;
+    box-sizing: border-box;
+}
+
+.staticrypt-form {
+    position: relative;
+    z-index: 1;
+    background: #ffffff;
+    max-width: 360px;
+    margin: 0 auto 100px;
+    padding: 45px;
+    text-align: center;
+    box-shadow: 0 0 20px 0 rgba(0, 0, 0, 0.2), 0 5px 5px 0 rgba(0, 0, 0, 0.24);
+      	opacity: 0.8;
+		background: rgba(0,0,0, 0.3);
+
+}
+
+.staticrypt-form input[type="password"],
+input[type="text"] {
+	 	font-family: "VT323", sans-serif;
+    background: inherit;
+    border: 0;
+    box-sizing: border-box; /* This ensures padding is included in the total width */
+    font-size: 14px;
+    outline: 0;
+    padding: 15px 30px 15px 15px; /* Adjust the padding to ensure there is space for the icon */
+    width: 100%;
+}
+
+.staticrypt-password-container {
+    position: relative;
+    outline: 0;
+    width: 100%;
+    border: 0;
+    margin: 0 0 15px;
+    box-sizing: border-box;
+    box-shadow: 0 0 20px 0 rgba(0, 0, 0, 0.2), 0 5px 5px 0 rgba(0, 0, 0, 0.24);
+}
+
+.staticrypt-toggle-password-visibility {
+    cursor: pointer;
+    height: 20px;
+    opacity: 60%;
+    padding: 13px;
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+}
+
+.staticrypt-form .staticrypt-decrypt-button {
+    width: 100%;
+    border: 0;
+    padding: 15px;
+    cursor: pointer;
+  	font-family: "VT323", sans-serif;
+  	color: white;
+  	opacity: 0.8;
+		background:	
+					linear-gradient(
+						-60deg,
+						#65abb7ee,
+						#2a3655
+					),
+					url(https://source.unsplash.com/ALu2B7Vy7ao),
+				#304134;
+}
+
+.staticrypt-form .staticrypt-decrypt-button:hover,
+.staticrypt-form .staticrypt-decrypt-button:active,
+.staticrypt-form .staticrypt-decrypt-button:focus {
+    filter: brightness(92%);
+}
+
+.staticrypt-html {
+	 	font-family: "VT323", sans-serif;
+    height: 100%;
+}
+
+.staticrypt-body {
+    height: 100%;
+    margin: 0;
+}
+
+.staticrypt-content {
+    height: 100%;
+    margin-bottom: 1em;
+}
+
+.staticrypt-instructions {
+    margin-top: -1em;
+    margin-bottom: 1em;
+}
+
+.staticrypt-title {
+    font-size: 1.5em;
+}
+
+label.staticrypt-remember {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1em;
+}
+
+.staticrypt-remember input[type="checkbox"] {
+    transform: scale(1.5);
+    margin-right: 1em;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.staticrypt-spinner-container {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.staticrypt-spinner {
+    display: inline-block;
+    width: 2rem;
+    height: 2rem;
+    vertical-align: text-bottom;
+    border: 0.25em solid gray;
+    border-right-color: transparent;
+    border-radius: 50%;
+    -webkit-animation: spinner-border 0.75s linear infinite;
+    animation: spinner-border 0.75s linear infinite;
+    animation-duration: 0.75s;
+    animation-timing-function: linear;
+    animation-delay: 0s;
+    animation-iteration-count: infinite;
+    animation-direction: normal;
+    animation-fill-mode: none;
+    animation-play-state: running;
+    animation-name: spinner-border;
+}
+
+@keyframes spinner-border {
+    100% {
+        transform: rotate(360deg);
+    }
+}
