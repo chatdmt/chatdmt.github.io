@@ -2,14 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Metatron Spinner</title>
+  <title>Spinner-a-tron</title>
   <style>
-    body { margin: 0; background: #050505; }
+    body {
+      margin: 0;
+      background: #050505;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
     #metatron-container {
-      width: 800px;
-      height: 800px;
-      margin: 0 auto;
-      display: block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
   </style>
 </head>
@@ -25,32 +32,18 @@
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x050505);
 
-  // ----- ORTHOGRAPHIC CAMERA (matches glOrtho-ish) -----
-  const size = 3.0;
-  function makeOrthoCamera() {
-    const aspect = container.clientWidth / container.clientHeight;
-    let left, right, top, bottom;
-    if (aspect >= 1.0) {
-      left = -size * aspect;
-      right =  size * aspect;
-      top =  size;
-      bottom = -size;
-    } else {
-      left = -size;
-      right =  size;
-      top =  size / aspect;
-      bottom = -size / aspect;
-    }
-    const cam = new THREE.OrthographicCamera(left, right, top, bottom, 0.1, 100);
-    cam.position.set(0, 0, 5);  // like glTranslatef(0,0,-5)
-    cam.lookAt(0, 0, 0);
-    return cam;
-  }
-
-  let camera = makeOrthoCamera();
+  // ----- ORTHOGRAPHIC CAMERA (square frustum) -----
+  const worldSize = 3.0;
+  const camera = new THREE.OrthographicCamera(
+    -worldSize, worldSize,
+     worldSize, -worldSize,
+    0.1, 100
+  );
+  camera.position.set(0, 0, 5);
+  camera.lookAt(0, 0, 0);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(container.clientWidth, container.clientHeight);
+  renderer.setPixelRatio(window.devicePixelRatio || 1);
   container.appendChild(renderer.domElement);
 
   // ----- Global orientation + inertia state -----
@@ -65,7 +58,7 @@
   // inertia (deg per frame)
   let velX = 0.0;
   let velY = 0.0;
-  const damping = 0.92;  // inertia slowdown
+  const damping = 0.92;
 
   // vertex/face-locking state
   let lockedToVertex = false;
@@ -93,7 +86,7 @@
     [1,2,6,5]  // 5 right
   ];
 
-  const cubeScales = [1.0, 1.0 / Math.sqrt(2.0), 0.5];  // outer, mid, inner (mid unused now)
+  const cubeScales = [1.0, 1.0 / Math.sqrt(2.0), 0.5];  // outer, mid, inner (mid unused)
 
   function scaledVertices(scale) {
     return baseVertices.map(([x,y,z]) => [x*scale, y*scale, z*scale]);
@@ -160,7 +153,6 @@
   function addPyramids(scaleOuter, positionArray) {
     const vOuter = scaledVertices(scaleOuter);
     const centers = faceCenters(vOuter);
-
     const opposites = {0:1, 1:0, 2:3, 3:2, 4:5, 5:4};
 
     for (let fi = 0; fi < cubeFaces.length; fi++) {
@@ -248,7 +240,6 @@
     ];
   }
 
-  // Now consider BOTH vertex directions and face-center directions
   function bestAlignmentAngle(axDeg, ayDeg) {
     const M = rotationMatrix(axDeg, ayDeg);
     let bestAng = Infinity;
@@ -274,12 +265,12 @@
     return bestAng;
   }
 
-  function isGreen(axDeg, ayDeg) {
+  function isAligned(axDeg, ayDeg) {
     const ang = bestAlignmentAngle(axDeg, ayDeg);
     return ang <= THREE.MathUtils.degToRad(5);
   }
 
-  // ----- Mouse handling (relative) + inertia injection -----
+  // ----- Mouse handling (relative) + inertia -----
   renderer.domElement.addEventListener('pointerdown', (e) => {
     mouseDown = true;
     lastMouseX = e.clientX;
@@ -320,19 +311,19 @@
     velY = dAY * 0.5;
   });
 
-  // ----- Drift (15° → 0°) with vertex/face lock -----
+  // ----- Drift (15° → 0°) with lock -----
 
   function applyDrift() {
     const ang0 = bestAlignmentAngle(angleX, angleY);
 
-    const lockThreshold = THREE.MathUtils.degToRad(0.5); // ~"exactly 0°"
-    const maxActive     = THREE.MathUtils.degToRad(15);  // area of influence upper bound
+    const lockThreshold = THREE.MathUtils.degToRad(0.5);
+    const maxActive     = THREE.MathUtils.degToRad(15);
 
     if (lockedToVertex) {
       if (ang0 >= maxActive) {
-        lockedToVertex = false; // left the influence cone
+        lockedToVertex = false;
       } else {
-        return; // locked and still inside influence → no drift, no jitter
+        return;
       }
     }
 
@@ -376,8 +367,11 @@
   }
 
   function updateColors() {
-    const green = isGreen(angleX, angleY);
-    const color = green ? 0x00ff00 : 0xffffff;
+    const aligned = isAligned(angleX, angleY);
+    // silvery golden (instead of green)
+    const gold = 0xC0B283;
+    const white = 0xffffff;
+    const color = aligned ? gold : white;
     lineMaterial.color.setHex(color);
     circleMaterial.color.setHex(color);
   }
@@ -395,7 +389,7 @@
     for (let i = 0; i < outerCircles.length; i++) {
       const [x,y,z] = outerWorld[i];
       outerCircles[i].position.set(x, y, z);
-      outerCircles[i].quaternion.copy(camera.quaternion); // billboard
+      outerCircles[i].quaternion.copy(camera.quaternion);
     }
 
     for (let i = 0; i < innerCircles.length; i++) {
@@ -405,29 +399,11 @@
     }
   }
 
+  // ----- Responsive square canvas (≈75% of viewport, square) -----
   function onResize() {
-    const w = container.clientWidth;
-    const h = container.clientHeight;
-    renderer.setSize(w, h);
-
-    const aspect = w / h;
-    let left, right, top, bottom;
-    if (aspect >= 1.0) {
-      left = -size * aspect;
-      right =  size * aspect;
-      top =  size;
-      bottom = -size;
-    } else {
-      left = -size;
-      right =  size;
-      top =  size / aspect;
-      bottom = -size / aspect;
-    }
-    camera.left = left;
-    camera.right = right;
-    camera.top = top;
-    camera.bottom = bottom;
-    camera.updateProjectionMatrix();
+    const minDim = Math.min(window.innerWidth, window.innerHeight);
+    const sizePx = Math.floor(minDim * 0.75);   // <-- changed from 0.9 to 0.75
+    renderer.setSize(sizePx, sizePx, false);
   }
   window.addEventListener('resize', onResize);
 
