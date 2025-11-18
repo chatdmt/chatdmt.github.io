@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Metatron Cube — Mobile & Desktop</title>
   <style>
     body {
@@ -31,7 +32,7 @@
   scene.background = new THREE.Color(0x050505);
 
   // ----- CAMERA -----
-  const worldSize = 3.0;
+  const worldSize = 2.5;
   const camera = new THREE.OrthographicCamera(
     -worldSize, worldSize,
      worldSize, -worldSize,
@@ -47,7 +48,7 @@
 
   // ----- SAFE PIXEL RATIO (CAP AT 2x TO AVOID iOS CRASHES) -----
   const basePR = window.devicePixelRatio || 1;
-  const safePR = Math.min(basePR, 2);  // cap at 2x
+  const safePR = Math.min(basePR, 3);  // cap at 2x
   renderer.setPixelRatio(safePR);
 
   container.appendChild(renderer.domElement);
@@ -64,7 +65,7 @@
 
   let velX = 0;
   let velY = 0;
-  const damping = 0.92;
+  const damping = 0.94;
 
   let lockedToVertex = false;
 
@@ -319,7 +320,7 @@
   // ---------- DRIFT (15°→0°) + LOCK ----------
   function applyDrift(){
     const ang0 = bestAngle(angleX, angleY);
-    const lockTh = THREE.MathUtils.degToRad(0.5);
+    const lockTh = THREE.MathUtils.degToRad(0.01);
     const maxActive = THREE.MathUtils.degToRad(15);
 
     if (lockedToVertex) {
@@ -399,7 +400,7 @@
 
     let size;
     if (h > w) {
-      size = Math.floor(w * 1.50);
+      size = Math.floor(w * 1.00);
     } else {
       size = Math.floor(Math.min(w, h) * 0.75);
     }

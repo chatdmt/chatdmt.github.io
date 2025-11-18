@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Cube of Spin-a-Tron</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Metatron Cube — Mobile & Desktop</title>
   <style>
     body {
       margin: 0;
@@ -31,7 +32,7 @@
   scene.background = new THREE.Color(0x050505);
 
   // ----- CAMERA -----
-  const worldSize = 3.0;
+  const worldSize = 2.5;
   const camera = new THREE.OrthographicCamera(
     -worldSize, worldSize,
      worldSize, -worldSize,
@@ -45,15 +46,12 @@
   // ----- TOUCH DETECTION -----
   const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 
-  // ----- MOBILE SUPER-SAMPLING FOR THICKER LINES -----
-  if (isTouch) {
-    renderer.setPixelRatio((window.devicePixelRatio || 1) * 2.0);
-  } else {
-    renderer.setPixelRatio(window.devicePixelRatio || 1);
-  }
+  // ----- SAFE PIXEL RATIO (CAP AT 2x TO AVOID iOS CRASHES) -----
+  const basePR = window.devicePixelRatio || 1;
+  const safePR = Math.min(basePR, 2);  // cap at 2x
+  renderer.setPixelRatio(safePR);
 
   container.appendChild(renderer.domElement);
-
 
   // ---------- GLOBAL ROTATION + INERTIA ----------
   let angleX = 30.0;
@@ -70,7 +68,6 @@
   const damping = 0.92;
 
   let lockedToVertex = false;
-
 
   // ---------- GEOMETRY ----------
   const baseVertices = [
@@ -115,7 +112,6 @@
     }
     return centers;
   }
-
 
   // ---------- BUILD LINE GEOMETRY ----------
   const lineMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
@@ -176,9 +172,8 @@
   cubeGroup.add(lineMesh);
   scene.add(cubeGroup);
 
-
   // ---------- BILLBOARD CIRCLES ----------
-  const circleMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
+  const circleMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 20 });
   const circleRadius = 0.4;
   const circleSeg = 96;
 
@@ -210,7 +205,6 @@
     const c=new THREE.LineLoop(circleG, circleMaterial);
     scene.add(c); innerCircles.push(c);
   }
-
 
   // ---------- ANGLE + DRIFT MATH ----------
   function rotationMatrix(ax,ay){
@@ -257,7 +251,6 @@
     return bestAngle(ax,ay) <= THREE.MathUtils.degToRad(5);
   }
 
-
   // ---------- DESKTOP POINTER EVENTS ----------
   renderer.domElement.addEventListener("pointerdown", e=>{
     if(isTouch) return;
@@ -288,7 +281,6 @@
     velX=dAX*0.5;
     velY=dAY*0.5;
   });
-
 
   // ---------- MOBILE TOUCH EVENTS ----------
   renderer.domElement.addEventListener("touchstart", e=>{
@@ -324,7 +316,6 @@
     lastMouseX=null;
     lastMouseY=null;
   });
-
 
   // ---------- DRIFT (15°→0°) + LOCK ----------
   function applyDrift(){
@@ -364,7 +355,6 @@
     angleY += dy;
   }
 
-
   // ---------- UPDATE HELPERS ----------
   function updateCube(){
     cubeGroup.rotation.x = THREE.MathUtils.degToRad(angleX);
@@ -402,8 +392,8 @@
     }
   }
 
-
-  // ---------- RESPONSIVE 100% WIDTH (PORTRAIT) OR 75% (LANDSCAPE) ----------
+  // ---------- RESPONSIVE SIZE ----------
+  // Portrait: 100% of width; Landscape: 75% of min(width, height)
   function onResize() {
     const w = window.innerWidth;
     const h = window.innerHeight;
@@ -419,7 +409,6 @@
   }
 
   window.addEventListener("resize", onResize);
-
 
   // ---------- MAIN LOOP ----------
   function animate() {
