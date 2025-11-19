@@ -354,6 +354,21 @@
         angleY += dy;
       }
 
+      function alignmentFactor() {
+        const ang = bestAngle(angleX, angleY); // radians
+        const max = THREE.MathUtils.degToRad(45);
+
+        // convert angle into a factor: 1 = perfect alignment, 0 = far outside
+        let t = 1 - (ang / max);
+        if (t < 0) t = 0;
+        if (t > 1) t = 1;
+
+        // ease curve to reduce jitter:
+        t = t * t * (3 - 2*t); // smoothstep
+
+        return t;
+      }
+
       /* ------------------------------------------------------------
          UPDATE FUNCTIONS
       ------------------------------------------------------------ */
@@ -365,9 +380,22 @@
       const gold = 0xC0B283;
 
       function updateColors() {
-        const col = isAligned() ? gold : 0xffffff;
-        lineMaterial.color.setHex(col);
-        circleMaterial.color.setHex(col);
+        const t = alignmentFactor(); // 0 → 1
+
+        // Base line color remains white
+        const gold = 0xC0B283;
+
+        // Blend line color slightly toward gold as it aligns
+        const r = THREE.MathUtils.lerp(1.0, 192/255, t);
+        const g = THREE.MathUtils.lerp(1.0, 178/255, t);
+        const b = THREE.MathUtils.lerp(1.0, 131/255, t);
+        lineMaterial.color.setRGB(r,g,b);
+        circleMaterial.color.setRGB(r,g,b);
+
+        // Glow strength grows strongly with t
+        bloomPass.strength = THREE.MathUtils.lerp(0.5, 2, t);
+        bloomPass.radius = THREE.MathUtils.lerp(0.5, 1.2, t);
+
       }
 
       function updateCircles() {
