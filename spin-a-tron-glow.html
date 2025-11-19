@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+  <title>Spin-a-tron</title>
+
+  <style>
+    body {
+      margin: 0;
+      background: #050505;
+      overflow: hidden;
+    }
+
+    #metatron-container {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="metatron-container"></div>
+
+  <!-- Import Map -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.148.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.148.0/examples/jsm/"
+    }
+  }
+</script>
+
+  <script type="module">
+    /* ============================================================
+         METATRON SPINNER WITH BLOOM
+       ============================================================ */
+    import * as THREE from 'three';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+    import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
+    import { LineGeometry } from 'three/addons/lines/LineGeometry.js';
+    import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+    import { Line2 } from 'three/addons/lines/Line2.js';
+
+    (function () {
+
+      const container = document.getElementById("metatron-container");
+
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x050505);
+
+      /* ------------------------------------------------------------
+         CAMERA
+      ------------------------------------------------------------ */
+      const worldSize = 2.5;
+      const camera = new THREE.OrthographicCamera(
+        -worldSize, worldSize,
+        worldSize, -worldSize,
+        0.1, 50
+      );
+      camera.position.set(0, 0, 5);
+      camera.lookAt(0, 0, 0);
+
+      /* ------------------------------------------------------------
+         RENDERER
+      ------------------------------------------------------------ */
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      const safePR = Math.min(window.devicePixelRatio || 1, 3);
+      renderer.setPixelRatio(safePR);
+      container.appendChild(renderer.domElement);
+
+      /* ------------------------------------------------------------
+         POSTPROCESSING — BLOOM
+      ------------------------------------------------------------ */
+      const composer = new EffectComposer(renderer);
+
+      const renderPass = new RenderPass(scene, camera);
+      composer.addPass(renderPass);
+
+      // BEAUTIFUL GOLDEN BLOOM
+      const bloomPass = new UnrealBloomPass(
+        new THREE.Vector2(window.innerWidth, window.innerHeight),
+        1.25,    // strength
+        0.85,    // radius
+        0.1      // threshold
+      );
+      composer.addPass(bloomPass);
+
+      /* ------------------------------------------------------------
+         INTERACTION + INERTIA
+      ------------------------------------------------------------ */
+      let angleX = 30, angleY = 30;
+
+      let mouseDown = false;
+      let lastX = null, lastY = null;
+      let velX = 0, velY = 0;
+      const damping = 0.94;
+      const mouseSensitivity = 0.4;
+
+      const isTouch = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
+      let lockedToVertex = false;
+
+      /* ------------------------------------------------------------
+         GEOMETRY HELPERS
+      ------------------------------------------------------------ */
+      const baseVertices = [
+        [-1, -1, -1], [1, -1, -1],
+        [1, 1, -1], [-1, 1, -1],
+        [-1, -1, 1], [1, -1, 1],
+        [1, 1, 1], [-1, 1, 1]
+      ];
+
+      const cubeEdges = [
+        [0, 1], [1, 2], [2, 3], [3, 0],
+        [4, 5], [5, 6], [6, 7], [7, 4],
+        [0, 4], [1, 5], [2, 6], [3, 7]
+      ];
+
+      const cubeFaces = [
+        [0, 1, 2, 3],
+        [4, 5, 6, 7],
+        [0, 1, 5, 4],
+        [3, 2, 6, 7],
+        [0, 3, 7, 4],
+        [1, 2, 6, 5]
+      ];
+
+      const outerScale = 1.0;
+      const innerScale = 0.5;
+
+      function scaledVertices(s) {
+        return baseVertices.map(v => [v[0] * s, v[1] * s, v[2] * s]);
+      }
+
+      const outerVerts = scaledVertices(outerScale);
+      const innerVerts = scaledVertices(innerScale);
+
+      function faceCenters(verts) {
+        const out = [];
+        for (const f of cubeFaces) {
+          let x = 0, y = 0, z = 0;
+          for (const i of f) {
+            const v = verts[i];
+            x += v[0]; y += v[1]; z += v[2];
+          }
+          out.push([x / 4, y / 4, z / 4]);
+        }
+        return out;
+      }
+
+      const faceCentersOuter = faceCenters(outerVerts);
+
+      /* ------------------------------------------------------------
+         CREATE LINE MESHES
+      ------------------------------------------------------------ */
+      const allPos = [];
+
+      function addCube(scale) {
+        const v = scaledVertices(scale);
+        for (const [a, b] of cubeEdges) {
+          const A = v[a], B = v[b];
+          allPos.push(A[0], A[1], A[2], B[0], B[1], B[2]);
+        }
+        for (const f of cubeFaces) {
+          const [a, b, c, d] = f;
+          const A = v[a], B = v[b], C = v[c], D = v[d];
+          allPos.push(A[0], A[1], A[2], C[0], C[1], C[2]);
+          allPos.push(B[0], B[1], B[2], D[0], D[1], D[2]);
+        }
+      }
+
+      function addOctahedron() {
+        const v = scaledVertices(outerScale);
+        const C = faceCenters(v);
+        const opp = { 0: 1, 1: 0, 2: 3, 3: 2, 4: 5, 5: 4 };
+        for (let i = 0; i < 6; i++)
+          for (let j = i + 1; j < 6; j++)
+            if (opp[i] !== j) {
+              const A = C[i], B = C[j];
+              allPos.push(A[0], A[1], A[2], B[0], B[1], B[2]);
+            }
+      }
+
+      function addPyramids() {
+        const v = scaledVertices(outerScale);
+        const C = faceCenters(v);
+        const opp = { 0: 1, 1: 0, 2: 3, 3: 2, 4: 5, 5: 4 };
+
+        for (let fi = 0; fi < 6; fi++) {
+          const face = cubeFaces[fi];
+          const apex = C[opp[fi]];
+          for (const vi of face) {
+            const A = v[vi];
+            allPos.push(A[0], A[1], A[2], apex[0], apex[1], apex[2]);
+          }
+        }
+      }
+
+      addCube(outerScale);
+      addOctahedron();
+      addPyramids();
+
+      // Use LineSegmentsGeometry for fat lines
+      const lineGeom = new LineSegmentsGeometry();
+      lineGeom.setPositions(allPos);
+
+      // Use LineMaterial
+      const lineMaterial = new LineMaterial({
+        color: 0xffffff,
+        linewidth: 2, // in pixels
+        resolution: new THREE.Vector2(window.innerWidth, window.innerHeight)
+      });
+
+      const cubeGroup = new THREE.Group();
+      // Use LineSegments2
+      const lineMesh = new LineSegments2(lineGeom, lineMaterial);
+      cubeGroup.add(lineMesh);
+
+      scene.add(cubeGroup);
+
+      /* ------------------------------------------------------------
+         BILLBOARD CIRCLES
+      ------------------------------------------------------------ */
+      // Use LineGeometry for fat lines (circles)
+      const circleGeom = new LineGeometry();
+      {
+        const pts = [];
+        const r = 0.40;
+        const seg = 96;
+        for (let i = 0; i <= seg; i++) { // <= to close the loop explicitly for LineGeometry
+          const t = 2 * Math.PI * i / seg;
+          pts.push(r * Math.cos(t), r * Math.sin(t), 0);
+        }
+        circleGeom.setPositions(pts);
+      }
+
+      // Reuse the same material or create a new one if needed.
+      // We can reuse lineMaterial since we want same color/width.
+      // But if we want to update them separately later, maybe separate instance.
+      // For now, let's reuse to keep it simple, or create a clone.
+      const circleMaterial = lineMaterial.clone();
+
+      const outerCircles = [];
+      const innerCircles = [];
+
+      for (const v of outerVerts) {
+        // Use Line2
+        const c = new Line2(circleGeom, circleMaterial);
+        c.position.set(v[0], v[1], v[2]);
+        scene.add(c);
+        outerCircles.push(c);
+      }
+
+      for (const v of innerVerts) {
+        const c = new Line2(circleGeom, circleMaterial);
+        c.position.set(v[0], v[1], v[2]);
+        scene.add(c);
+        innerCircles.push(c);
+      }
+
+      /* ------------------------------------------------------------
+         ROTATION HELPERS
+      ------------------------------------------------------------ */
+      function rotationMatrix(ax, ay) {
+        const AX = THREE.MathUtils.degToRad(ax);
+        const AY = THREE.MathUtils.degToRad(ay);
+        const sx = Math.sin(AX), cx = Math.cos(AX);
+        const sy = Math.sin(AY), cy = Math.cos(AY);
+
+        return [
+          [cy, 0, -sy],
+          [sy * sx, cx, cy * sx],
+          [sy * cx, -sx, cy * cx]
+        ];
+      }
+
+      function rot(M, v) {
+        const x = v[0], y = v[1], z = v[2];
+        return [
+          M[0][0] * x + M[0][1] * y + M[0][2] * z,
+          M[1][0] * x + M[1][1] * y + M[1][2] * z,
+          M[2][0] * x + M[2][1] * y + M[2][2] * z
+        ];
+      }
+
+      function bestAngle(ax, ay) {
+        const M = rotationMatrix(ax, ay);
+        let best = Infinity;
+
+        function check(v) {
+          let [x, y, z] = rot(M, v);
+          const L = Math.sqrt(x * x + y * y + z * z);
+          x /= L; y /= L; z /= L;
+          const ang = Math.acos(Math.min(1, Math.max(-1, z)));
+          if (ang < best) best = ang;
+        }
+
+        outerVerts.forEach(check);
+        faceCentersOuter.forEach(check);
+
+        return best;
+      }
+
+      function isAligned() {
+        return bestAngle(angleX, angleY) <= THREE.MathUtils.degToRad(5);
+      }
+
+      /* ------------------------------------------------------------
+         DRIFT — as before
+      ------------------------------------------------------------ */
+      function applyDrift() {
+        const ang0 = bestAngle(angleX, angleY);
+        const lockTh = THREE.MathUtils.degToRad(0.01);
+        const maxActive = THREE.MathUtils.degToRad(15);
+
+        if (lockedToVertex) {
+          if (ang0 >= maxActive) lockedToVertex = false;
+          else return;
+        }
+
+        if (ang0 <= lockTh) {
+          velX = 0; velY = 0;
+          lockedToVertex = true;
+          return;
+        }
+
+        if (ang0 >= maxActive) return;
+
+        const probe = 0.5;
+        const step = 0.6;
+
+        const angPx = bestAngle(angleX + probe, angleY);
+        const angMx = bestAngle(angleX - probe, angleY);
+        let dx = 0;
+        if (angPx < ang0 || angMx < ang0)
+          dx = (angPx < angMx ? step : -step);
+
+        const angPy = bestAngle(angleX, angleY + probe);
+        const angMy = bestAngle(angleX, angleY - probe);
+        let dy = 0;
+        if (angPy < ang0 || angMy < ang0)
+          dy = (angPy < angMy ? step : -step);
+
+        angleX += dx;
+        angleY += dy;
+      }
+
+      /* ------------------------------------------------------------
+         UPDATE FUNCTIONS
+      ------------------------------------------------------------ */
+      function updateCube() {
+        cubeGroup.rotation.x = THREE.MathUtils.degToRad(angleX);
+        cubeGroup.rotation.y = THREE.MathUtils.degToRad(angleY);
+      }
+
+      const gold = 0xC0B283;
+
+      function updateColors() {
+        const col = isAligned() ? gold : 0xffffff;
+        lineMaterial.color.setHex(col);
+        circleMaterial.color.setHex(col);
+      }
+
+      function updateCircles() {
+        const M = rotationMatrix(angleX, angleY);
+
+        function apply(arr, objs) {
+          for (let i = 0; i < arr.length; i++) {
+            const [x, y, z] = rot(M, arr[i]);
+            objs[i].position.set(x, y, z);
+            objs[i].quaternion.copy(camera.quaternion);
+          }
+        }
+
+        apply(outerVerts, outerCircles);
+        apply(innerVerts, innerCircles);
+      }
+
+      /* ------------------------------------------------------------
+         MOUSE + TOUCH EVENTS (unchanged)
+      ------------------------------------------------------------ */
+      function pointerDown(x, y) {
+        mouseDown = true; lastX = x; lastY = y; velX = velY = 0;
+      }
+      function pointerMove(x, y) {
+        if (!mouseDown) return;
+        const dx = x - lastX, dy = y - lastY;
+        lastX = x; lastY = y;
+
+        const dAX = dy * mouseSensitivity;
+        const dAY = dx * mouseSensitivity;
+        angleX += dAX; angleY += dAY;
+        velX = dAX * 0.5; velY = dAY * 0.5;
+      }
+      function pointerUp() {
+        mouseDown = false;
+        lastX = lastY = null;
+      }
+
+      renderer.domElement.addEventListener("pointerdown", e => {
+        if (isTouch) return;
+        pointerDown(e.clientX, e.clientY);
+      });
+      renderer.domElement.addEventListener("pointermove", e => {
+        if (isTouch) return;
+        pointerMove(e.clientX, e.clientY);
+      });
+      window.addEventListener("pointerup", () => { if (!isTouch) pointerUp(); });
+
+      renderer.domElement.addEventListener("touchstart", e => {
+        if (!isTouch) return;
+        const t = e.touches[0];
+        pointerDown(t.clientX, t.clientY);
+      }, { passive: true });
+      renderer.domElement.addEventListener("touchmove", e => {
+        if (!isTouch) return;
+        const t = e.touches[0];
+        pointerMove(t.clientX, t.clientY);
+      }, { passive: true });
+      renderer.domElement.addEventListener("touchend", () => {
+        if (!isTouch) return;
+        pointerUp();
+      });
+
+      /* ------------------------------------------------------------
+         RESPONSIVE
+      ------------------------------------------------------------ */
+      function onResize() {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+
+        let size;
+        if (h > w) size = w * 1.00;
+        else size = Math.min(w, h) * 0.75;
+
+        size = Math.floor(size);
+
+        renderer.setSize(size, size);
+        composer.setSize(size, size);
+
+        // Update resolution for fat lines
+        if (lineMaterial.resolution) lineMaterial.resolution.set(w, h);
+        if (circleMaterial.resolution) circleMaterial.resolution.set(w, h);
+      }
+
+      window.addEventListener("resize", onResize);
+
+      /* ------------------------------------------------------------
+         LOOP
+      ------------------------------------------------------------ */
+      function animate() {
+        requestAnimationFrame(animate);
+
+        if (!mouseDown && !lockedToVertex) {
+          angleX += velX;
+          angleY += velY;
+          velX *= damping;
+          velY *= damping;
+        }
+
+        applyDrift();
+        updateCube();
+        updateColors();
+        updateCircles();
+
+        composer.render();
+      }
+
+      onResize();
+      animate();
+
+    })();
+  </script>
+
+</body>
+
+</html>
